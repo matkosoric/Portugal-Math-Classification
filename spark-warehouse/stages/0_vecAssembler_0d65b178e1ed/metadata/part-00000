@@ -1,0 +1,1 @@
+{"class":"org.apache.spark.ml.feature.VectorAssembler","timestamp":1540909025416,"sparkVersion":"2.3.1","uid":"vecAssembler_0d65b178e1ed","paramMap":{"inputCols":["age","Medu","Fedu","traveltime","studytime","failures","famrel","freetime","goout","Dalc","Walc","health","absences","G1","G2"],"outputCol":"features"}}
