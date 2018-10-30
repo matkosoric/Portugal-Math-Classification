@@ -1,4 +1,4 @@
-# Predicting Final Grade in Math in Portugal Schools
+# Predicting Final Grade in Math in Portuguese Schools
 
 Demonstrating logistic regression with Spark MLlib to predict final grade from various input features.
 
