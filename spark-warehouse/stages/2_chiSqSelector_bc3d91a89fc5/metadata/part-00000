@@ -1,1 +1,0 @@
-{"class":"org.apache.spark.ml.feature.ChiSqSelectorModel","timestamp":1540909026021,"sparkVersion":"2.3.1","uid":"chiSqSelector_bc3d91a89fc5","paramMap":{"fdr":0.05,"numTopFeatures":20,"featuresCol":"scaledFeatures","percentile":0.1,"labelCol":"label","fwe":0.05,"fpr":0.05,"selectorType":"numTopFeatures","outputCol":"selectedFeatures"}}
