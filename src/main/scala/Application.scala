@@ -2,6 +2,8 @@ import org.apache.spark.ml.{Pipeline, PipelineModel}
 import org.apache.spark.ml.classification.LogisticRegression
 import org.apache.spark.ml.evaluation.RegressionEvaluator
 import org.apache.spark.ml.feature.{ChiSqSelector, StandardScaler, VectorAssembler}
+import org.apache.spark.ml.feature.StringIndexer
+
 
 object Application {
 
@@ -23,25 +25,41 @@ object Application {
       .option("inferSchema","true")
       .load("src/main/resources/student-mat.csv")
 
+
+    val indexers = loadingDF.select("school", "sex", "address", "famsize", "Pstatus", "Mjob",
+    "Fjob", "reason", "guardian",  "schoolsup", "famsup", "paid","activities", "nursery","higher","internet","romantic")
+      .columns.map { colName =>
+      new StringIndexer().setInputCol(colName).setOutputCol(colName + "_indexed")
+    }
+
+
+    val pipelineIndex = new Pipeline()
+      .setStages(indexers)
+
+    val dfWithIndexedStrings = pipelineIndex.fit(loadingDF).transform(loadingDF)
+
+    dfWithIndexedStrings.show()
+
+
     // removing columns with string type
-    val loadingDF2 = loadingDF.withColumnRenamed("G3", "label")
-      .drop("school")
-      .drop("sex")
-      .drop("address")
-      .drop("famsize")
-      .drop("Pstatus")
-      .drop("Mjob")
-      .drop("Fjob")
-      .drop("reason")
-      .drop("guardian")
-      .drop("schoolsup")
-      .drop("famsup")
-      .drop("paid")
-      .drop("activities")
-      .drop("nursery")
-      .drop("higher")
-      .drop("internet")
-      .drop("romantic")
+    val loadingDF2 = dfWithIndexedStrings.withColumnRenamed("G3", "label")
+//      .drop("school")
+//      .drop("sex")
+//      .drop("address")
+//      .drop("famsize")
+//      .drop("Pstatus")
+//      .drop("Mjob")
+//      .drop("Fjob")
+//      .drop("reason")
+//      .drop("guardian")
+//      .drop("schoolsup")
+//      .drop("famsup")
+//      .drop("paid")
+//      .drop("activities")
+//      .drop("nursery")
+//      .drop("higher")
+//      .drop("internet")
+//      .drop("romantic")
 
     val Array(training, test)  = loadingDF2.randomSplit(Array(0.8, 0.2), seed = 50)
 
@@ -54,7 +72,24 @@ object Application {
         "traveltime", "studytime", "failures",
         "famrel", "freetime", "goout", "Dalc", "Walc", "health",
         "absences",
-        "G1", "G2"
+        "school_indexed",
+        "sex_indexed",
+        "address_indexed",
+        "famsize_indexed",
+        "Pstatus_indexed",
+        "Mjob_indexed",
+        "Fjob_indexed",
+        "reason_indexed",
+        "guardian_indexed",
+        "schoolsup_indexed",
+        "famsup_indexed",
+        "paid_indexed",
+        "activities_indexed",
+        "nursery_indexed",
+        "higher_indexed",
+        "internet_indexed",
+        "romantic_indexed"
+//            ,"G1", "G2"
       ))
       .setOutputCol("features")
 
@@ -66,7 +101,7 @@ object Application {
 
     // could be used for reducing the number of columns
     val selector = new ChiSqSelector()
-      .setNumTopFeatures(20)
+//      .setNumTopFeatures(20)
       .setFeaturesCol("scaledFeatures")
       .setLabelCol("label")
       .setOutputCol("selectedFeatures")
