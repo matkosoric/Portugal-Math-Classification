@@ -1,16 +1,20 @@
 import org.apache.spark.ml.{Pipeline, PipelineModel}
 import org.apache.spark.ml.classification.LogisticRegression
-import org.apache.spark.ml.evaluation.RegressionEvaluator
+import org.apache.spark.ml.evaluation.{BinaryClassificationEvaluator, RegressionEvaluator}
 import org.apache.spark.ml.feature.{ChiSqSelector, StandardScaler, VectorAssembler}
 import org.apache.spark.ml.feature.StringIndexer
+import org.apache.spark.ml.tuning.{CrossValidator, CrossValidatorModel, ParamGridBuilder}
+import org.apache.spark.mllib.linalg.SingularValueDecomposition
+import org.apache.spark.mllib.tree.DecisionTree
+import org.apache.spark.mllib.tree.configuration.Strategy
 
 
-object Application {
+object Training {
 
   def main(args: Array[String]): Unit = {
 
     val spark = org.apache.spark.sql.SparkSession.builder
-      .master("local")
+      .master("local[*]")
       .appName("Predicting final grade in Math for two Portugal Schools")
       .getOrCreate;
 
@@ -32,17 +36,15 @@ object Application {
       new StringIndexer().setInputCol(colName).setOutputCol(colName + "_indexed")
     }
 
-
     val pipelineIndex = new Pipeline()
       .setStages(indexers)
 
-    val dfWithIndexedStrings = pipelineIndex.fit(loadingDF).transform(loadingDF)
-
+    val dfWithIndexedStrings = pipelineIndex.fit(loadingDF).transform(loadingDF).withColumnRenamed("G3", "label")
     dfWithIndexedStrings.show()
 
 
     // removing columns with string type
-    val loadingDF2 = dfWithIndexedStrings.withColumnRenamed("G3", "label")
+//    val loadingDF2 = dfWithIndexedStrings.withColumnRenamed("G3", "label")
 //      .drop("school")
 //      .drop("sex")
 //      .drop("address")
@@ -61,7 +63,7 @@ object Application {
 //      .drop("internet")
 //      .drop("romantic")
 
-    val Array(training, test)  = loadingDF2.randomSplit(Array(0.8, 0.2), seed = 50)
+    val Array(training, test)  = dfWithIndexedStrings.randomSplit(Array(0.8, 0.2), seed = 50)
 
     //checking for zeroes
     //    println ("-------------------" + training.filter(training("G2").equalTo(0.0)).count())
@@ -106,19 +108,45 @@ object Application {
       .setLabelCol("label")
       .setOutputCol("selectedFeatures")
 
-    val lr = new LogisticRegression()
-      .setMaxIter(30)
-      .setRegParam(0.001)
-      .setElasticNetParam(0.001)
+    val logRegModel = new LogisticRegression()
       .setFeaturesCol("selectedFeatures")
       .setLabelCol("label")
 
-    //creating pipeline
-    val pipeline = new Pipeline().setStages(Array(assembler,  scaler, selector, lr))
-    val lrModel = pipeline.fit(training)
 
-    lrModel.write.overwrite().save("spark-warehouse")
-    val loadedModel = PipelineModel.load("spark-warehouse")
+    val pipeline = new Pipeline().setStages(Array(assembler, scaler, selector, logRegModel))
+//    val lrModel = pipeline.fit(dfWithIndexedStrings)
+
+
+
+    val paramGrid = new ParamGridBuilder()
+      .addGrid(logRegModel.maxIter, Array(5))
+      .addGrid(logRegModel.elasticNetParam, Array(0.001))
+      .addGrid(logRegModel.regParam, Array(0.001))
+//      .addGrid(logRegModel.maxIter, Array(5, 10, 20))
+//      .addGrid(logRegModel.elasticNetParam, Array(0.001, 0.01, 0.1, 1.0))
+//      .addGrid(logRegModel.regParam, Array(0.001, 0.01, 0.1, 1.0))
+//      .addGrid(logRegModel.aggregationDepth, Array(2, 5, 10))
+//      .addGrid(logRegModel.fitIntercept, Array(true, false))
+//      .addGrid(logRegModel.standardization, Array(true, false))
+//      .addGrid(logRegModel.threshold, Array(0.001, 0.01, 0.1, 1.0))
+//      .addGrid(logRegModel.tol, Array(1000.0, 10000.0, 100000.0, 1000000.0))
+      .build()
+
+    val cv = new CrossValidator()
+      .setEstimator(pipeline)
+      .setEvaluator(new RegressionEvaluator())
+      .setEstimatorParamMaps(paramGrid)
+      .setNumFolds(4)
+
+    val bestLogRegModel = cv.fit(training)
+
+    bestLogRegModel.write.overwrite().save("spark-warehouse")
+    val loadedModel = CrossValidatorModel.load("spark-warehouse")
+
+//    loadedModel.transform(test)
+//      .select("features", "label", "prediction")
+//      .show(20, false)
+
 
     val resultDFtest = loadedModel.transform(test)
     val resultDFtraining = loadedModel.transform(training)
@@ -136,6 +164,7 @@ object Application {
       .show(20
         , false
       )
+
 
     // evaluation
     val evaluatorRMSE = new RegressionEvaluator
