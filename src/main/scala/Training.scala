@@ -2,7 +2,10 @@ import org.apache.spark.ml.{Pipeline, PipelineModel}
 import org.apache.spark.ml.classification.LogisticRegression
 import org.apache.spark.ml.evaluation.RegressionEvaluator
 import org.apache.spark.ml.feature.{ChiSqSelector, StandardScaler, StringIndexer, VectorAssembler}
+import org.apache.spark.ml.linalg.Matrix
+import org.apache.spark.ml.stat.Correlation
 import org.apache.spark.ml.tuning.{CrossValidator, CrossValidatorModel, ParamGridBuilder}
+import org.apache.spark.mllib.stat.{MultivariateStatisticalSummary, Statistics}
 
 
 object Training {
@@ -11,7 +14,7 @@ object Training {
 
     val spark = org.apache.spark.sql.SparkSession.builder
       .master("local[*]")
-      .appName("Predicting final grade in Math for two Portugal Schools")
+      .appName("Predicting final grade in Math for two Portuguese Schools")
       .getOrCreate;
 
     spark.conf.set("spark.debug.maxToStringFields", 50L)
@@ -25,6 +28,7 @@ object Training {
       .option("inferSchema","true")
       .load("src/main/resources/student-mat.csv")
 
+    loadingDF.printSchema()
 
     val indexers = loadingDF.select("school", "sex", "address", "famsize", "Pstatus", "Mjob",
     "Fjob", "reason", "guardian",  "schoolsup", "famsup", "paid","activities", "nursery","higher","internet","romantic")
@@ -36,7 +40,67 @@ object Training {
       .setStages(indexers)
 
     val dfWithIndexedStrings = pipelineIndex.fit(loadingDF).transform(loadingDF).withColumnRenamed("G3", "label")
-    dfWithIndexedStrings.show()
+          .drop("school")
+          .drop("sex")
+          .drop("address")
+          .drop("famsize")
+          .drop("Pstatus")
+          .drop("Mjob")
+          .drop("Fjob")
+          .drop("reason")
+          .drop("guardian")
+          .drop("schoolsup")
+          .drop("famsup")
+          .drop("paid")
+          .drop("activities")
+          .drop("nursery")
+          .drop("higher")
+          .drop("internet")
+          .drop("romantic")
+//      .drop("G1")   // too correlated
+//      .drop("G2")   // too correlated
+
+    val dfDoubles= dfWithIndexedStrings.select(
+      dfWithIndexedStrings.col("age").cast("float"),
+      dfWithIndexedStrings.col("Medu").cast("float"),
+      dfWithIndexedStrings.col("Fedu").cast("float"),
+      dfWithIndexedStrings.col("traveltime").cast("float"),
+      dfWithIndexedStrings.col("studytime").cast("float"),
+      dfWithIndexedStrings.col("failures").cast("float"),
+      dfWithIndexedStrings.col("famrel").cast("float"),
+      dfWithIndexedStrings.col("freetime").cast("float"),
+      dfWithIndexedStrings.col("goout").cast("float"),
+      dfWithIndexedStrings.col("Dalc").cast("float"),
+      dfWithIndexedStrings.col("Walc").cast("float"),
+      dfWithIndexedStrings.col("health").cast("float"),
+      dfWithIndexedStrings.col("absences").cast("float"),
+
+      dfWithIndexedStrings.col("school_indexed"),
+      dfWithIndexedStrings.col("sex_indexed"),
+      dfWithIndexedStrings.col("address_indexed"),
+      dfWithIndexedStrings.col("famsize_indexed"),
+      dfWithIndexedStrings.col("Pstatus_indexed"),
+      dfWithIndexedStrings.col("Mjob_indexed"),
+      dfWithIndexedStrings.col("Fjob_indexed"),
+      dfWithIndexedStrings.col("reason_indexed"),
+      dfWithIndexedStrings.col("guardian_indexed"),
+      dfWithIndexedStrings.col("schoolsup_indexed"),
+      dfWithIndexedStrings.col("famsup_indexed"),
+      dfWithIndexedStrings.col("paid_indexed"),
+      dfWithIndexedStrings.col("activities_indexed"),
+      dfWithIndexedStrings.col("nursery_indexed"),
+      dfWithIndexedStrings.col("higher_indexed"),
+      dfWithIndexedStrings.col("internet_indexed"),
+      dfWithIndexedStrings.col("romantic_indexed"),
+      dfWithIndexedStrings.col("label"),
+
+          dfWithIndexedStrings.col("G1").cast("float"),
+          dfWithIndexedStrings.col("G2").cast("float")
+
+    )
+
+
+    dfDoubles.show()
 
 
     // removing columns with string type
@@ -59,7 +123,7 @@ object Training {
 //      .drop("internet")
 //      .drop("romantic")
 
-    val Array(training, test)  = dfWithIndexedStrings.randomSplit(Array(0.8, 0.2), seed = 500)
+    val Array(training, test)  = dfDoubles.randomSplit(Array(0.8, 0.2), seed = 500)
 
     training.cache()
     test.cache()
@@ -78,7 +142,7 @@ object Training {
         "Pstatus_indexed", "Mjob_indexed", "Fjob_indexed", "reason_indexed",
         "guardian_indexed", "schoolsup_indexed", "famsup_indexed", "paid_indexed",
         "activities_indexed", "nursery_indexed", "higher_indexed", "internet_indexed", "romantic_indexed"
-//            ,"G1", "G2"
+            ,"G1", "G2"
       ))
       .setOutputCol("features")
 
@@ -90,7 +154,7 @@ object Training {
 
     // could be used for reducing the number of columns
     val selector = new ChiSqSelector()
-//      .setNumTopFeatures(20)
+//      .setNumTopFeatures(7)
       .setFeaturesCol("scaledFeatures")
       .setLabelCol("label")
       .setOutputCol("selectedFeatures")
@@ -99,25 +163,24 @@ object Training {
       .setFeaturesCol("selectedFeatures")
       .setLabelCol("label")
 
-
+//    val pipeline = new Pipeline().setStages(Array(assembler, logRegModel))
     val pipeline = new Pipeline().setStages(Array(assembler, scaler, selector, logRegModel))
-//    val lrModel = pipeline.fit(dfWithIndexedStrings)
 
 
 
     val paramGrid = new ParamGridBuilder()
-//      .addGrid(logRegModel.maxIter, Array(5, 20))
-//      .addGrid(logRegModel.elasticNetParam, Array(0.001))
-//      .addGrid(logRegModel.regParam, Array(0.001))
+      .addGrid(logRegModel.maxIter, Array(10))
+      .addGrid(logRegModel.elasticNetParam, Array(0.001))
+      .addGrid(logRegModel.regParam, Array(0.01))
 
-      .addGrid(logRegModel.maxIter, Array(5, 10, 20))
-      .addGrid(logRegModel.elasticNetParam, Array(0.001, 0.01, 0.1, 1.0))
-      .addGrid(logRegModel.regParam, Array(0.001, 0.01, 0.1, 1.0))
-      .addGrid(logRegModel.aggregationDepth, Array(2, 5, 10))
-      .addGrid(logRegModel.fitIntercept, Array(true, false))
-      .addGrid(logRegModel.standardization, Array(true, false))
-      .addGrid(logRegModel.threshold, Array(0.001, 0.01, 0.1, 1.0))
-      .addGrid(logRegModel.tol, Array(1000.0, 10000.0, 100000.0, 1000000.0))
+//      .addGrid(logRegModel.maxIter, Array(5, 10, 20))
+//      .addGrid(logRegModel.elasticNetParam, Array(0.001, 0.01, 0.1, 1.0))
+//      .addGrid(logRegModel.regParam, Array(0.001, 0.01, 0.1, 1.0))
+//      .addGrid(logRegModel.aggregationDepth, Array(2, 5, 10))
+//      .addGrid(logRegModel.fitIntercept, Array(true, false))
+//      .addGrid(logRegModel.standardization, Array(true, false))
+//      .addGrid(logRegModel.threshold, Array(0.001, 0.01, 0.1, 1.0))
+//      .addGrid(logRegModel.tol, Array(1000.0, 10000.0, 100000.0, 1000000.0))
       .build()
 
     val cv = new CrossValidator()
@@ -128,32 +191,23 @@ object Training {
 
     val bestLogRegModel = cv.fit(training).bestModel.asInstanceOf[PipelineModel]
 
-
-
     bestLogRegModel.write.overwrite().save("spark-warehouse")
     val loadedModel = PipelineModel.load("spark-warehouse")
-
-//    loadedModel.transform(test)
-//      .select("features", "label", "prediction")
-//      .show(20, false)
-
 
     val resultDFtest = loadedModel.transform(test)
     val resultDFtraining = loadedModel.transform(training)
 
     resultDFtest.sample(0.2, 53245)
       .select(
-//        "features",
+        "features",
         "label",
-        "prediction",
-        //        "scaledFeatures",
-                "selectedFeatures"
-        //        "rawPrediction",
-        //        "probability",
+        "prediction"
+//                "scaledFeatures",
+//                "selectedFeatures",
+//                "rawPrediction",
+//                "probability"
       )
-      .show(20
-        , false
-      )
+      .show(20, false)
 
 
     // evaluation
