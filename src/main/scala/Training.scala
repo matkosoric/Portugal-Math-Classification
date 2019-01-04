@@ -1,11 +1,11 @@
-import org.apache.spark.ml.{Pipeline, PipelineModel}
 import org.apache.spark.ml.classification.LogisticRegression
 import org.apache.spark.ml.evaluation.RegressionEvaluator
 import org.apache.spark.ml.feature.{ChiSqSelector, StandardScaler, StringIndexer, VectorAssembler}
 import org.apache.spark.ml.linalg.Matrix
 import org.apache.spark.ml.stat.Correlation
-import org.apache.spark.ml.tuning.{CrossValidator, CrossValidatorModel, ParamGridBuilder}
-import org.apache.spark.mllib.stat.{MultivariateStatisticalSummary, Statistics}
+import org.apache.spark.ml.tuning.{CrossValidator, ParamGridBuilder}
+import org.apache.spark.ml.{Pipeline, PipelineModel}
+import org.apache.spark.sql.Row
 
 
 object Training {
@@ -173,6 +173,14 @@ object Training {
 
     val resultDFtest = loadedModel.transform(test)
     val resultDFtraining = loadedModel.transform(training)
+
+
+//    val trainingVectors = resultDFtraining.rdd.map{
+//        row => Vectors.dense(row.getAs[Seq[Double]]("features").toArray)
+//      }
+      val Row(coeff1: Matrix) = Correlation.corr(resultDFtraining, "features").head
+      println("Pearson correlation matrix:\n" + coeff1.toString(32,Int.MaxValue))
+
 
     resultDFtest.sample(0.2, 53245)
       .select(
