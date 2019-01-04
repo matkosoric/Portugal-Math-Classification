@@ -102,34 +102,11 @@ object Training {
 
     dfDoubles.show()
 
-
-    // removing columns with string type
-//    val loadingDF2 = dfWithIndexedStrings.withColumnRenamed("G3", "label")
-//      .drop("school")
-//      .drop("sex")
-//      .drop("address")
-//      .drop("famsize")
-//      .drop("Pstatus")
-//      .drop("Mjob")
-//      .drop("Fjob")
-//      .drop("reason")
-//      .drop("guardian")
-//      .drop("schoolsup")
-//      .drop("famsup")
-//      .drop("paid")
-//      .drop("activities")
-//      .drop("nursery")
-//      .drop("higher")
-//      .drop("internet")
-//      .drop("romantic")
-
-    val Array(training, test)  = dfDoubles.randomSplit(Array(0.8, 0.2), seed = 500)
+    val Array(training, test)  = dfDoubles.randomSplit(Array(0.8, 0.2), seed = 989)
 
     training.cache()
     test.cache()
 
-    //checking for zeroes
-    //    println ("-------------------" + training.filter(training("G2").equalTo(0.0)).count())
 
     val assembler = new VectorAssembler()
       .setInputCols(Array(
@@ -154,7 +131,7 @@ object Training {
 
     // could be used for reducing the number of columns
     val selector = new ChiSqSelector()
-//      .setNumTopFeatures(7)
+      .setNumTopFeatures(10)
       .setFeaturesCol("scaledFeatures")
       .setLabelCol("label")
       .setOutputCol("selectedFeatures")

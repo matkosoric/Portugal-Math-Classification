@@ -26,7 +26,6 @@ object Evaluating {
 
     println(loadedModel.extractParamMap())
 
-
   }
 
 }
