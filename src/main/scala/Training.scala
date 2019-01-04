@@ -1,12 +1,8 @@
 import org.apache.spark.ml.{Pipeline, PipelineModel}
 import org.apache.spark.ml.classification.LogisticRegression
-import org.apache.spark.ml.evaluation.{BinaryClassificationEvaluator, RegressionEvaluator}
-import org.apache.spark.ml.feature.{ChiSqSelector, StandardScaler, VectorAssembler}
-import org.apache.spark.ml.feature.StringIndexer
+import org.apache.spark.ml.evaluation.RegressionEvaluator
+import org.apache.spark.ml.feature.{ChiSqSelector, StandardScaler, StringIndexer, VectorAssembler}
 import org.apache.spark.ml.tuning.{CrossValidator, CrossValidatorModel, ParamGridBuilder}
-import org.apache.spark.mllib.linalg.SingularValueDecomposition
-import org.apache.spark.mllib.tree.DecisionTree
-import org.apache.spark.mllib.tree.configuration.Strategy
 
 
 object Training {
@@ -63,34 +59,25 @@ object Training {
 //      .drop("internet")
 //      .drop("romantic")
 
-    val Array(training, test)  = dfWithIndexedStrings.randomSplit(Array(0.8, 0.2), seed = 50)
+    val Array(training, test)  = dfWithIndexedStrings.randomSplit(Array(0.8, 0.2), seed = 500)
+
+    training.cache()
+    test.cache()
 
     //checking for zeroes
     //    println ("-------------------" + training.filter(training("G2").equalTo(0.0)).count())
 
     val assembler = new VectorAssembler()
       .setInputCols(Array(
-        "age",  "Medu", "Fedu",
-        "traveltime", "studytime", "failures",
-        "famrel", "freetime", "goout", "Dalc", "Walc", "health",
-        "absences",
-        "school_indexed",
-        "sex_indexed",
-        "address_indexed",
-        "famsize_indexed",
-        "Pstatus_indexed",
-        "Mjob_indexed",
-        "Fjob_indexed",
-        "reason_indexed",
-        "guardian_indexed",
-        "schoolsup_indexed",
-        "famsup_indexed",
-        "paid_indexed",
-        "activities_indexed",
-        "nursery_indexed",
-        "higher_indexed",
-        "internet_indexed",
-        "romantic_indexed"
+        // numeric features
+        "age",  "Medu", "Fedu", "traveltime", "studytime", "failures",
+        "famrel", "freetime", "goout", "Dalc", "Walc", "health", "absences",
+
+        // indexed string features
+        "school_indexed", "sex_indexed", "address_indexed", "famsize_indexed",
+        "Pstatus_indexed", "Mjob_indexed", "Fjob_indexed", "reason_indexed",
+        "guardian_indexed", "schoolsup_indexed", "famsup_indexed", "paid_indexed",
+        "activities_indexed", "nursery_indexed", "higher_indexed", "internet_indexed", "romantic_indexed"
 //            ,"G1", "G2"
       ))
       .setOutputCol("features")
@@ -119,29 +106,32 @@ object Training {
 
 
     val paramGrid = new ParamGridBuilder()
-      .addGrid(logRegModel.maxIter, Array(5))
-      .addGrid(logRegModel.elasticNetParam, Array(0.001))
-      .addGrid(logRegModel.regParam, Array(0.001))
-//      .addGrid(logRegModel.maxIter, Array(5, 10, 20))
-//      .addGrid(logRegModel.elasticNetParam, Array(0.001, 0.01, 0.1, 1.0))
-//      .addGrid(logRegModel.regParam, Array(0.001, 0.01, 0.1, 1.0))
-//      .addGrid(logRegModel.aggregationDepth, Array(2, 5, 10))
-//      .addGrid(logRegModel.fitIntercept, Array(true, false))
-//      .addGrid(logRegModel.standardization, Array(true, false))
-//      .addGrid(logRegModel.threshold, Array(0.001, 0.01, 0.1, 1.0))
-//      .addGrid(logRegModel.tol, Array(1000.0, 10000.0, 100000.0, 1000000.0))
+//      .addGrid(logRegModel.maxIter, Array(5, 20))
+//      .addGrid(logRegModel.elasticNetParam, Array(0.001))
+//      .addGrid(logRegModel.regParam, Array(0.001))
+
+      .addGrid(logRegModel.maxIter, Array(5, 10, 20))
+      .addGrid(logRegModel.elasticNetParam, Array(0.001, 0.01, 0.1, 1.0))
+      .addGrid(logRegModel.regParam, Array(0.001, 0.01, 0.1, 1.0))
+      .addGrid(logRegModel.aggregationDepth, Array(2, 5, 10))
+      .addGrid(logRegModel.fitIntercept, Array(true, false))
+      .addGrid(logRegModel.standardization, Array(true, false))
+      .addGrid(logRegModel.threshold, Array(0.001, 0.01, 0.1, 1.0))
+      .addGrid(logRegModel.tol, Array(1000.0, 10000.0, 100000.0, 1000000.0))
       .build()
 
     val cv = new CrossValidator()
       .setEstimator(pipeline)
       .setEvaluator(new RegressionEvaluator())
       .setEstimatorParamMaps(paramGrid)
-      .setNumFolds(4)
+      .setNumFolds(5)
 
-    val bestLogRegModel = cv.fit(training)
+    val bestLogRegModel = cv.fit(training).bestModel.asInstanceOf[PipelineModel]
+
+
 
     bestLogRegModel.write.overwrite().save("spark-warehouse")
-    val loadedModel = CrossValidatorModel.load("spark-warehouse")
+    val loadedModel = PipelineModel.load("spark-warehouse")
 
 //    loadedModel.transform(test)
 //      .select("features", "label", "prediction")
@@ -151,13 +141,13 @@ object Training {
     val resultDFtest = loadedModel.transform(test)
     val resultDFtraining = loadedModel.transform(training)
 
-    resultDFtest.sample(0.3, 54)
+    resultDFtest.sample(0.2, 53245)
       .select(
-        "features",
+//        "features",
         "label",
-        "prediction"
+        "prediction",
         //        "scaledFeatures",
-        //        "selectedFeatures",
+                "selectedFeatures"
         //        "rawPrediction",
         //        "probability",
       )
@@ -167,7 +157,7 @@ object Training {
 
 
     // evaluation
-    val evaluatorRMSE = new RegressionEvaluator
+    val evaluatorRMSE = new RegressionEvaluator()
     println("Is larger better: " + evaluatorRMSE.isLargerBetter)
     println(evaluatorRMSE.explainParams())
     val RMSEtraining = evaluatorRMSE.evaluate(resultDFtraining)
