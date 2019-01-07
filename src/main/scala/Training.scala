@@ -139,8 +139,9 @@ object Training {
     val logRegModel = new LogisticRegression()
       .setFeaturesCol("selectedFeatures")
       .setLabelCol("label")
+      .setFamily("multinomial")
 
-//    val pipeline = new Pipeline().setStages(Array(assembler, logRegModel))
+    //    val pipeline = new Pipeline().setStages(Array(assembler, logRegModel))
     val pipeline = new Pipeline().setStages(Array(assembler, scaler, selector, logRegModel))
 
 
@@ -174,10 +175,6 @@ object Training {
     val resultDFtest = loadedModel.transform(test)
     val resultDFtraining = loadedModel.transform(training)
 
-
-//    val trainingVectors = resultDFtraining.rdd.map{
-//        row => Vectors.dense(row.getAs[Seq[Double]]("features").toArray)
-//      }
       val Row(coeff1: Matrix) = Correlation.corr(resultDFtraining, "features").head
       println("Pearson correlation matrix:\n" + coeff1.toString(32,Int.MaxValue))
 
