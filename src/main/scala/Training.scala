@@ -147,18 +147,18 @@ object Training {
 
 
     val paramGrid = new ParamGridBuilder()
-      .addGrid(logRegModel.maxIter, Array(10))
-      .addGrid(logRegModel.elasticNetParam, Array(0.001))
-      .addGrid(logRegModel.regParam, Array(0.01))
+//      .addGrid(logRegModel.maxIter, Array(10))
+//      .addGrid(logRegModel.elasticNetParam, Array(0.001))
+//      .addGrid(logRegModel.regParam, Array(0.01))
 
-//      .addGrid(logRegModel.maxIter, Array(5, 10, 20))
-//      .addGrid(logRegModel.elasticNetParam, Array(0.001, 0.01, 0.1, 1.0))
-//      .addGrid(logRegModel.regParam, Array(0.001, 0.01, 0.1, 1.0))
-//      .addGrid(logRegModel.aggregationDepth, Array(2, 5, 10))
-//      .addGrid(logRegModel.fitIntercept, Array(true, false))
-//      .addGrid(logRegModel.standardization, Array(true, false))
-//      .addGrid(logRegModel.threshold, Array(0.001, 0.01, 0.1, 1.0))
-//      .addGrid(logRegModel.tol, Array(1000.0, 10000.0, 100000.0, 1000000.0))
+      .addGrid(logRegModel.maxIter, Array(5, 10, 20))
+      .addGrid(logRegModel.elasticNetParam, Array(0.001, 0.01, 0.1, 1.0))
+      .addGrid(logRegModel.regParam, Array(0.001, 0.01, 0.1, 1.0))
+      .addGrid(logRegModel.aggregationDepth, Array(2, 5, 10))
+      .addGrid(logRegModel.fitIntercept, Array(true, false))
+      .addGrid(logRegModel.standardization, Array(true, false))
+      .addGrid(logRegModel.threshold, Array(0.001, 0.01, 0.1, 1.0))
+      .addGrid(logRegModel.tol, Array(1000.0, 10000.0, 100000.0, 1000000.0))
       .build()
 
     val cv = new CrossValidator()
@@ -168,6 +168,8 @@ object Training {
       .setNumFolds(5)
 
     val bestLogRegModel = cv.fit(training).bestModel.asInstanceOf[PipelineModel]
+
+    println(bestLogRegModel.asInstanceOf[PipelineModel].stages(3).extractParamMap())
 
     bestLogRegModel.write.overwrite().save("spark-warehouse")
     val loadedModel = PipelineModel.load("spark-warehouse")
