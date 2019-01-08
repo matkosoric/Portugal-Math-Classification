@@ -4,20 +4,25 @@ This is a demo of logistic regression in Spark MLlib to predict a final grade.
 Although G1 and G2 features are highly correlated with the final grade as a target column (G3) and should be excluded from the model, poor predicting performance forced me to include those features also.
 Model is saved in the /spark-warehouse folder.
 
+######RMSE = 2.3788  
+
 ### Tools
 
 * [Spark 2.4.0 MLlib](https://spark.apache.org/releases/spark-release-2-4-0.html) - Big Data Analytics Engine
 * [Orange 3.19.0](https://orange.biolab.si/) - Data mining tool
+
 ### Dataset
 
-Dataset was downloaded from UC Irvine Machine Learning Repository. It has 32 attributes and 395 entries about students in secondary education in two Portuguese schools.  
+Dataset was downloaded from UC Irvine Machine Learning Repository.
+It has 32 attributes and 395 entries about students in secondary education in two Portuguese schools.
+Labels on the selected data points show value of the final grade (G3).
 [Student Performance Data Set](https://archive.ics.uci.edu/ml/datasets/student+performance)
   
 Correlation between G1 and G3 features:
-![G1 - G3 correlation - Matko Soric](https://raw.githubusercontent.com/matkosoric/Portugal-Math-Classification/master/G1-G3-correlation.png?raw=true "G1-G3 Correlation")
+![G1 - G3 correlation - Matko Soric](https://raw.githubusercontent.com/matkosoric/Portugal-Math-Classification/master/src/main/resources/G1-G3-correlation.png?raw=true "G1-G3 Correlation")
   
 Correlation between G1 and G3 features:
-![G2 - G3 correlation - Matko Soric](https://raw.githubusercontent.com/matkosoric/Portugal-Math-Classification/master/G2-G3-correlation.png?raw=true "G2-G3 Correlation")
+![G2 - G3 correlation - Matko Soric](https://raw.githubusercontent.com/matkosoric/Portugal-Math-Classification/master/src/main/resources/G2-G3-correlation.png?raw=true "G2-G3 Correlation")
   
 ### Results
 
