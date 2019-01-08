@@ -1,16 +1,24 @@
 # Predicting Final Grade in Math in Portuguese Schools
 
-Demonstrating logistic regression with Spark MLlib to predict final grade from various input features.
+This is a demo of logistic regression in Spark MLlib to predict a final grade.
+Although G1 and G2 features are highly correlated with the final grade as a target column (G3) and should be excluded from the model, poor predicting performance forced me to include those features also.
+Model is saved in the /spark-warehouse folder.
 
 ### Tools
 
-[Spark 2.3.2 MLlib](https://spark.apache.org/docs/latest/ml-guide.html)
-
+* [Spark 2.4.0 MLlib](https://spark.apache.org/releases/spark-release-2-4-0.html) - Big Data Analytics Engine
+* [Orange 3.19.0](https://orange.biolab.si/) - Data mining tool
 ### Dataset
 
-Dataset was downloaded from UC Irvine Machine Learning Repository. It has 32 attributes and 395 entries about students in secondary education in two Portuguese schools.
-https://archive.ics.uci.edu/ml/datasets/student+performance
-
+Dataset was downloaded from UC Irvine Machine Learning Repository. It has 32 attributes and 395 entries about students in secondary education in two Portuguese schools.  
+[Student Performance Data Set](https://archive.ics.uci.edu/ml/datasets/student+performance)
+  
+Correlation between G1 and G3 features:
+![G1 - G3 correlation - Matko Soric](https://raw.githubusercontent.com/matkosoric/Portugal-Math-Classification/master/G1-G3-correlation.png?raw=true "G1-G3 Correlation")
+  
+Correlation between G1 and G3 features:
+![G2 - G3 correlation - Matko Soric](https://raw.githubusercontent.com/matkosoric/Portugal-Math-Classification/master/G2-G3-correlation.png?raw=true "G2-G3 Correlation")
+  
 ### Results
 
 <pre><code>
@@ -75,6 +83,23 @@ root
 +----+----+----+----------+---------+--------+------+--------+-----+----+----+------+--------+--------------+-----------+---------------+---------------+---------------+------------+------------+--------------+----------------+-----------------+--------------+------------+------------------+---------------+--------------+----------------+----------------+-----+----+----+
 only showing top 20 rows
 
+Model hyper-parameters:
+{
+	logreg_1079f9d337e0-aggregationDepth: 2,
+	logreg_1079f9d337e0-elasticNetParam: 0.001,
+	logreg_1079f9d337e0-family: auto,
+	logreg_1079f9d337e0-featuresCol: selectedFeatures,
+	logreg_1079f9d337e0-fitIntercept: true,
+	logreg_1079f9d337e0-labelCol: label,
+	logreg_1079f9d337e0-maxIter: 10,
+	logreg_1079f9d337e0-predictionCol: prediction,
+	logreg_1079f9d337e0-probabilityCol: probability,
+	logreg_1079f9d337e0-rawPredictionCol: rawPrediction,
+	logreg_1079f9d337e0-regParam: 0.01,
+	logreg_1079f9d337e0-standardization: true,
+	logreg_1079f9d337e0-threshold: 0.001,
+	logreg_1079f9d337e0-tol: 1.0E-6
+}
 Pearson correlation matrix:
 1.0                    -0.14134800560351005    -0.14328091671130977   0.08346300654976704    -0.01295013498336172   0.21423367639916452    0.052380064040017736    3.836698986096511E-4   0.18360617745190172    0.10480740703710131     0.12150145861500565    -0.08573656255838923   0.19093782220662714    0.3532507196608683      -0.08748505845356876   0.12158090252093481    0.033252673121696365   -0.04539406772489167    -0.08676753897701453   -0.045785776987062765  0.053087485473170284    0.2675713743208881     -0.26294888858401444   0.1386309962204759     8.686549425520958E-4    0.10522851673934797    0.07443492868270701     0.22141017223407713    0.12204400880656785    0.20781783408303783     -0.08789052917386155    -0.17481972807957116   
 -0.14134800560351005   1.0                     0.6054279471376931     -0.1544164373345926    0.05320042476343546    -0.2048844141946284    -0.0012224269608619796  0.034770680412664234   0.022970651640258556   0.04259815836449059     -0.05640482940092041   -0.01837370614049859   0.08577062120022352    -0.09277750389597127    0.1035816234613191     -0.12132072397872      -0.038947741167282474  0.11924288160988823     0.3875784762628307     0.13582721432456116    0.09632819248537147     -0.0900072111723233    -0.04042398028479715   -0.21121993631155164   0.14034237818695217     -0.12087489245873011   -0.17795831873097437    -0.13037426624252754   -0.15362164395649003   0.03630503060891339     0.21570047315362692     0.22863381592100004    

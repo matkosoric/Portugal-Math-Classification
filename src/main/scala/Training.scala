@@ -92,13 +92,12 @@ object Training {
       dfWithIndexedStrings.col("higher_indexed"),
       dfWithIndexedStrings.col("internet_indexed"),
       dfWithIndexedStrings.col("romantic_indexed"),
-      dfWithIndexedStrings.col("label"),
+      dfWithIndexedStrings.col("label")
 
-          dfWithIndexedStrings.col("G1").cast("float"),
+          , dfWithIndexedStrings.col("G1").cast("float"),
           dfWithIndexedStrings.col("G2").cast("float")
 
     )
-
 
     dfDoubles.show()
 
@@ -106,7 +105,6 @@ object Training {
 
     training.cache()
     test.cache()
-
 
     val assembler = new VectorAssembler()
       .setInputCols(Array(
@@ -129,7 +127,7 @@ object Training {
       .setWithStd(false)
       .setWithMean(true)
 
-    // could be used for reducing the number of columns
+    // select the most valuable features
     val selector = new ChiSqSelector()
       .setNumTopFeatures(10)
       .setFeaturesCol("scaledFeatures")
@@ -139,26 +137,32 @@ object Training {
     val logRegModel = new LogisticRegression()
       .setFeaturesCol("selectedFeatures")
       .setLabelCol("label")
-      .setFamily("multinomial")
+      .setFamily("auto")
 
     //    val pipeline = new Pipeline().setStages(Array(assembler, logRegModel))
     val pipeline = new Pipeline().setStages(Array(assembler, scaler, selector, logRegModel))
 
-
-
     val paramGrid = new ParamGridBuilder()
-//      .addGrid(logRegModel.maxIter, Array(10))
-//      .addGrid(logRegModel.elasticNetParam, Array(0.001))
-//      .addGrid(logRegModel.regParam, Array(0.01))
 
-      .addGrid(logRegModel.maxIter, Array(5, 10, 20))
-      .addGrid(logRegModel.elasticNetParam, Array(0.001, 0.01, 0.1, 1.0))
-      .addGrid(logRegModel.regParam, Array(0.001, 0.01, 0.1, 1.0))
-      .addGrid(logRegModel.aggregationDepth, Array(2, 5, 10))
-      .addGrid(logRegModel.fitIntercept, Array(true, false))
-      .addGrid(logRegModel.standardization, Array(true, false))
-      .addGrid(logRegModel.threshold, Array(0.001, 0.01, 0.1, 1.0))
-      .addGrid(logRegModel.tol, Array(1000.0, 10000.0, 100000.0, 1000000.0))
+      // single model
+      .addGrid(logRegModel.aggregationDepth, Array(2))
+      .addGrid(logRegModel.elasticNetParam, Array(0.001))
+      .addGrid(logRegModel.fitIntercept, Array(true))
+      .addGrid(logRegModel.maxIter, Array(10))
+      .addGrid(logRegModel.regParam, Array(0.01))
+      .addGrid(logRegModel.standardization, Array(true))
+      .addGrid(logRegModel.threshold, Array(0.001))
+      .addGrid(logRegModel.tol, Array(0.000001))
+
+      // full grid search
+//      .addGrid(logRegModel.maxIter, Array(5, 7, 10, 15, 20))
+//      .addGrid(logRegModel.elasticNetParam, Array(0.0001, 0.001, 0.01, 0.1, 0.5))
+//      .addGrid(logRegModel.regParam, Array(0.001, 0.01, 0.1, 1.0))
+//      .addGrid(logRegModel.aggregationDepth, Array(2, 5, 10))
+//      .addGrid(logRegModel.fitIntercept, Array(true, false))
+//      .addGrid(logRegModel.standardization, Array(true, false))
+//      .addGrid(logRegModel.threshold, Array(0.001, 0.01, 0.1, 1.0))
+//      .addGrid(logRegModel.tol, Array(0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1))
       .build()
 
     val cv = new CrossValidator()
@@ -169,7 +173,7 @@ object Training {
 
     val bestLogRegModel = cv.fit(training).bestModel.asInstanceOf[PipelineModel]
 
-    println(bestLogRegModel.asInstanceOf[PipelineModel].stages(3).extractParamMap())
+    println("Model hyper-parameters:\n" + bestLogRegModel.asInstanceOf[PipelineModel].stages(3).extractParamMap())
 
     bestLogRegModel.write.overwrite().save("spark-warehouse")
     val loadedModel = PipelineModel.load("spark-warehouse")
@@ -180,28 +184,21 @@ object Training {
       val Row(coeff1: Matrix) = Correlation.corr(resultDFtraining, "features").head
       println("Pearson correlation matrix:\n" + coeff1.toString(32,Int.MaxValue))
 
-
     resultDFtest.sample(0.2, 53245)
       .select(
         "features",
         "label",
         "prediction"
-//                "scaledFeatures",
-//                "selectedFeatures",
-//                "rawPrediction",
-//                "probability"
-      )
-      .show(20, false)
-
+      ).show(20, false)
 
     // evaluation
     val evaluatorRMSE = new RegressionEvaluator()
     println("Is larger better: " + evaluatorRMSE.isLargerBetter)
     println(evaluatorRMSE.explainParams())
     val RMSEtraining = evaluatorRMSE.evaluate(resultDFtraining)
-    println("Root Mean Squared Error training= " + RMSEtraining)
+    println("Root Mean Squared Error on a training set = " + RMSEtraining)
     val RMSEtest = evaluatorRMSE.evaluate(resultDFtest)
-    println("Root Mean Squared Error test = " + RMSEtest)
+    println("Root Mean Squared Error on a test set = " + RMSEtest)
 
   }
 }
