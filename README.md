@@ -4,7 +4,7 @@ This is a demo of logistic regression in Spark MLlib to predict a final grade.
 Although G1 and G2 features are highly correlated with the final grade as a target column (G3) and should be excluded from the model, poor predicting performance forced me to include those features also.
 Model is saved in the /spark-warehouse folder.
 
-#####RMSE = 2.3788  
+##### RMSE = 2.3788  
 
 ### Tools
 
